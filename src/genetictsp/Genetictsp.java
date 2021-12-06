@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Scanner;
+
 
 /**
  *
@@ -48,17 +50,21 @@ public class Genetictsp {
     static Double start_location_x = 0.0;
     static Double start_location_y = 0.0;
     static SecureRandom sr = new SecureRandom();
-    static int genertions = 1000,generations_count = 0;
+    static int genertions = 5000,generations_count = 0;
     static boolean GASwap = false;
     static double best_generation_distance = 0.0 ;
     static String best_generation = "",best_genertion_path;
     static LinkedList<String> unique = new LinkedList<>();
     static int _10P = 0;
     static int g_c = 0;
+
+    static long start_timer = 0l;
+    static long end_timer = 0l;
+    
     
     public static void main(String[] args) {
         try {
-            File f = new File("test3tsp.txt");
+            File f = new File("../../test2tsp.txt");
             //get file path
             Path p = f.toPath();
             list = Files.readAllLines(p);
@@ -107,11 +113,125 @@ public class Genetictsp {
             init_main_locations = new LinkedHashMap<>(main_locations);
             //start location is city 1
             start_location = 1;
+            System.out.println("Select Algorithm: ");
+            System.out.println(" 1) TSP with Genetic Algorithm.\n 2) TSP with Nearest Neighbour");
+            int choice = new Scanner(System.in).nextInt();
             _10P = (int)(0.1 *genertions);
-            Random(10,2);
+            // System.out.println("TSP with Genetic Algorithm. " + genertions + " generations.");
+            
+            switch(choice) {
+                case 1:
+                    startTimer();
+                    Random(10,2);
+                    endTimer();
+                    break;
+                case 2:
+                    startTimer();
+                    ShortestRoute();
+                    endTimer();
+                    break;
+                default:
+                    System.out.println("Wrong Entry");
+                    break;
+            }
+            
         } catch (Exception ex) {
             Logger.getLogger(Genetictsp.class.getName()).log(Level.SEVERE, null, ex);
         }
+    }
+
+    private static long startTimer() {
+        start_timer = System.nanoTime();
+        return start_timer;
+    }
+
+    private static long endTimer() {
+        
+        end_timer = System.nanoTime();
+        
+        System.out.println("Start Time " + start_timer +" nano seconds" );
+        System.out.println("End Time " + end_timer +" nano seconds" );
+        System.out.println("Time Difference " + (end_timer - start_timer) +" nano seconds");
+        return end_timer;
+    }
+
+    private static void ShortestRoute() 
+    {
+        /*****
+         * go from city  1 to city X
+         * distance 0.0 1-1
+         * C1 to CY
+         * D-12
+         * C1 - CZ
+         * D - 11
+         * 
+         * ========
+         * CZ - CX
+         * 
+         */
+        //hold city numbers
+        LinkedList<Integer> cities_no = new LinkedList<>();
+        LinkedList<Integer> init_cities_no = new LinkedList<>();
+        Double temp_distance = 0.0,total_distance = 0.0;
+
+        for(Map.Entry<Integer,LinkedList<Double>> entry : main_locations.entrySet())
+        {
+            init_cities_no.add(entry.getKey());
+        }
+
+        cities_no.addAll(init_cities_no);
+        //clear path on each run
+        path.clear();
+        String t_path = "";
+        LinkedList<Integer> paths = new LinkedList<>();
+        while (cities_no.size() > 0) {
+            int proposed_city = -1;
+            System.out.println("==========================================");
+            int prev_start_loc = start_location;
+            
+            
+            int total_cities = cities_no.size();
+            for(int i = 1; i <= total_cities; i++) {
+                //make sure random city is not the current city
+                proposed_city = i;
+                //proposed_city = cities_no.get(proposed_city);
+                // if(prev_start_loc == start_location){
+                //     continue;
+                // }
+                //System.out.println(cities_no.get(proposed_city));
+                System.out.println(proposed_city);
+                Double tmp_distance = nn(prev_start_loc, proposed_city);
+                System.out.println("distance_calc " + tmp_distance+" distance " + temp_distance);
+                if (tmp_distance < temp_distance || ( temp_distance == 0.0)) {
+                    System.out.println(paths.contains(start_location));
+                    if (paths.contains(proposed_city) || cities_no.get(proposed_city) == cities_no.get(prev_start_loc)) {
+                        continue;
+                    }
+                    temp_distance = tmp_distance;
+                    start_location = proposed_city;
+                    System.out.println("Shorter Path "+ prev_start_loc+" to city "+ start_location + " distance: " + temp_distance);
+                }
+                else {
+                    System.out.println("Path "+ prev_start_loc+" to city "+ proposed_city + " distance: " + tmp_distance);
+                }
+            }
+                t_path += start_location+",";
+                total_distance +=  temp_distance;
+                temp_distance = 0.0;
+                paths.add(prev_start_loc);
+                System.out.println("Travelling from city "+ prev_start_loc+" to city "+ start_location);
+                
+                    
+                cities_no.remove(cities_no.indexOf(prev_start_loc));
+                //cities_no.remove(prev_start_loc);
+                for (Integer integer : cities_no) {
+                    System.out.println(integer);
+                }
+            }
+            
+            t_path += 1+"";
+            System.out.println(t_path);
+        
     }
     
     private static void Random(int run_times,int parent_no)
@@ -130,6 +250,10 @@ public class Genetictsp {
         int recheck_counter = 0,success_counter = 0;
         //clear path on each run
         path.clear();
+        System.out.println("Genetic Algorithm TSP");
+        System.out.println("Iterations: " + run_times);
+        System.out.println("Number of Parents: " + parent_no);
+        System.out.println("Audit Logs: ");
         for(int x = 0;x < parent_no;x++)
         {
             System.out.println("=====================");
@@ -221,6 +345,7 @@ public class Genetictsp {
     {
         //calculate travel distance
         double distance_calc = Math.sqrt(Math.pow((main_locations.get(start_location).get(0) - (main_locations.get(key).get(0))), 2) + Math.pow((main_locations.get(start_location).get(1) - (main_locations.get(key).get(1))), 2));
+        
         return distance_calc;
     }
     
